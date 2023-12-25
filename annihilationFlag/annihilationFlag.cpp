@@ -41,6 +41,7 @@ class AnnihilationFlag : public bz_Plugin {
     {
         Flush();
     }
+    bz_eGameType gameType;
 };
 
 BZ_PLUGIN(AnnihilationFlag)
@@ -56,6 +57,7 @@ void AnnihilationFlag::Init(const char*)
     bz_registerCustomBZDBInt("_annihilationFXSWMinHeight", 10);	
     bz_registerCustomBZDBInt("_annihilationFXSWMaxHeight", 20);					
     Register(bz_ePlayerDieEvent);
+    gameType = bz_getGameType();
 }
 
 AnnihilationFlag::~AnnihilationFlag() {}
@@ -80,6 +82,9 @@ void AnnihilationFlag::Event(bz_EventData *eventData)
         	}
         
             bz_APIIntList* playerList = bz_getPlayerIndexList();
+            if (playerList)
+            {
+            bz_getPlayerIndexList(playerList);
 			bz_sendTextMessagef(BZ_SERVER, BZ_ALLUSERS, "BOOM! %s just annihilated the map!", bz_getPlayerCallsign(data->playerID));
 			
 			// Kill all the players
@@ -93,7 +98,16 @@ void AnnihilationFlag::Event(bz_EventData *eventData)
 					// BUrrow (+BU) is immune to ANnihilation (+AN)
 					if (playerRecord->currentFlag != "BUrrow (+BU)")
 					{
-						bz_killPlayer(playerList->get(i), false, data->playerID, "AN");
+						if ((playerRecord->team == data->killerTeam) && (gameType != eOpenFFAGame) && (data->killerTeam != eRogueTeam))
+						{
+		            		bz_killPlayer(playerList->get(i), false, BZ_SERVER, "AN");
+		            		bz_incrementPlayerWins(data->playerID, 1);
+		            		
+						}
+						else
+						{
+		            		bz_killPlayer(playerList->get(i), false, data->playerID, "AN");	
+						}
 						// bz_killPlayer automatically decrements their score, so
 						// we add it back by the following.
 						bz_incrementPlayerLosses(playerList->get(i), -1);
@@ -126,7 +140,11 @@ void AnnihilationFlag::Event(bz_EventData *eventData)
         	
         	// Reset the flag into the world
         	bz_resetFlag(data->flagHeldWhenKilled);
+            }
+            bz_deleteIntList(playerList);
+
         }
+            
     }
 }
 
